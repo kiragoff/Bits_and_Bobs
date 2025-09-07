@@ -1,0 +1,234 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+Bubble plots and bar charts - custom colours
+Kira Goff, 2025
+
+All of my scripts for processing amplicon data in DADA2 use phyloseq to generate customizable bar charts in R. That is more flexible and customizable. This, however, works from a simple csv file. It also lets you make bubble plots. 
+
+Stacked bar charts are possibly the most common way to display community data, but in my opinion are rarely the best way to display data. Interpretation gets difficult once you're visualizing more than about a dozen components. If you have more, the bubble plot portion of this script will likely provide better visualization. 
+
+Subset your data before you load the csv. Some possibilities:
+1) ASVs with the greatest relative abundance
+	- Everything above a certain %  relative abundance (1%, 5%, etc)
+	- Top 20, top 30 for relative abundance
+	- Measures calculated either for all samples together, or for each individual sample
+2) All ASVs of the same genus
+3) Everything from a specific taxonomic group
+4) Any organisms you're interested in
+
+This script requires your data to be in a specific format. Aside from being a .csv file, the following format should be used:
+
+Sample 			    ASVx	  ASVx	  ASVx ...
+Sample_name_1	  74		  3		    14
+Sample_name_2	  14		  34		  8
+
+Sample 			    Genus1	Genus2  Genus3 ...
+Day2			      74		  3		    14
+Day111			    14		  34		  8
+
+Important data considerations:
+1) The first column needs to have the header "Sample", and the rows below should be your sample names or descriptions, no spaces. 
+2) The following columns will be your ASVs (or genera, if you've collapses the ASVs), exactly as you want them on the legend.
+3) Everything will be plotted in the same order as you've entered it on the charts
+4) Some special characters will be replaced with "."
+5) Data must be in relative abundances, as whole numbers (76.2% would be 76.6)
+    - DADA2 output will be in absolute reads and still contain sequences from mitochondria and chloroplasts, it will also need to be transposed
+    - Make sure you remove reads from mitochondria and chloroplasts before calcating relative abundances
+    - For Silva:
+      - Bacteria; Cyanobacteriota; Cyanobacteriia; Chloroplast 
+      - Bacteria; Pseudomonadota; Alphaproteobacteria; Rickettsiales; Mitochondria 
+6) All sample names MUST be unique
+
+
+
+Get R set up. Load the packages we're going to use. If R has been updated recently, you might need to re-install them. In that case, remove the # in front of "install" and then run the code chunk again.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(root.dir="/mnt/work-drive/kira/dieselITS2025") #CHANGE THIS to your working directory
+#rm(list=ls(all=T))
+```
+
+
+
+Load the packages we're going to use. If R has been updated recently, you might need to re-install them. In that case, remove the # in front of "install" and then run the code chunk again.
+```{r}
+#install.packages("ggplot2")
+#install.packages("reshape2")
+#install.packages("paletteer")
+library(ggplot2)
+library(reshape2)
+library(paletteer)
+
+```
+
+
+Import your data and format it for plotting.
+```{r}
+rm(list=ls(all=T)) #Clear your workspace again so do you don't accidentally replot an old file
+pc=read.csv("/mnt/work-drive/kira/dieselITS2025/its-top10-amorphcollapsed.csv", header=TRUE) #Read your csv file in
+pcm = melt(pc, id = c("Sample")) #prepare a dataframe for plotting 
+pcm$Sample <- factor(pcm$Sample,levels=unique(pcm$Sample)) #Use this to plot your samples in the same order you've entered them in your csv. 
+```
+If you want to let R alphabetize things, hash out the above line.
+Keep in mind that alphabetically, '111' comes before '2.' (Think of how AAA comes before B.)
+
+This version of the script is specifically for use when you are using a custom colour palette. 
+
+Some resources: 
+  - coolors.co/
+  - colorhunt.co/
+  - https://emilhvitfeldt.github.io/r-color-palettes/ (you can grab the hex codes from existing palettes as a base), https://redketchup.io/color-picker
+
+Define your palette, using hex codes ("#2CA02CFF") or colour names ("darkgrey"). Make sure to provide as many colours as you need in the order you want them used. 
+```{r}
+colours = c
+(
+  "#1F77B4FF",  
+  "#2CA02CFF",  
+  "#FF7F0EFF",  
+  "#DBDB8DFF",  
+  "#FFBB78FF",  
+  "#9467BDFF",  
+  "#17BECFFF",  
+  "#9EDAE5FF", 
+  "#9F33FF", 
+  "#EAD2FE" #and so on
+) 
+```
+
+If you only want to make bar charts, skip to the last code chunk. If you don't want to make a bar chart, don't run that code chunk.
+
+Options are described behind #, or you can run the code as-is.
+
+
+Bubble plots!
+
+```{r}
+```{r}
+bubbles = ggplot(pcm, aes(x = Sample, y = variable)) 
++ 
+  geom_point(aes(size = value, fill = variable), 
+             alpha = 0.75, #Opacity of circle fill, from 1 (opaque) to 0 (transparent), .75 is useful if there's any overlap
+             shape = 21 #Shape 21 is a circle
+             ) 
++ 
+  scale_size_continuous(limits = c(0.00000001, 100), #Defines the numerical range that will be plotted - default is just above zero to 100%.
+                        range = c(1,17), #Numerical size of the smallest and largest bubbles
+                        breaks = c(1,5,25,50) #Reference bubbles for abundances. Choose these based on your data.
+                        ) 
++ 
+  #theme_bw() #Un-hash to add vertical and horizontal lines in your graph
++ 
+  labs( x= "", y = "", size = "", fill = "")  
++ 
+  theme(legend.key=element_blank(), 
+        axis.text.x = #X-axis text settings
+          element_text(colour = "black", #Takes names ("darkgrey") or hex codes ("#5b5b5b")
+                      size = 12, 
+                      face = "bold", #Options: "bold", "italic", "bold.italic" or "" for plain text
+                      angle = 90, vjust = 0.5, hjust = 1 #use this for straight text labels
+                      #angle=45, vjust=1 #use this for angled text labels
+                      ), 
+        axis.text.y = 
+          element_text(colour = "black", 
+                      face = "bold.italic", 
+                      size = 11
+                      ), 
+        legend.text =  #Adjust text settings for legend text
+          element_text(size = 10, 
+                      face ="bold", 
+                      colour ="black"
+                      ),
+        legend.title = 
+          element_text(size = 12, 
+                      face = "bold"
+                      ), #Adjust text settings for legend title
+          panel.background = element_blank(), 
+          panel.border = 
+            element_rect(colour = "black", 
+                        fill = NA, 
+                        size = 1.2
+                        ), 
+        legend.position = "right") 
++
+  guides(fill="none") 
++
+  scale_fill_manual(values = colours, guide = FALSE) 
++ 
+  scale_y_discrete(limits = rev(levels(pcm$variable))) 
+
+bubbles
+```
+
+If you have any relative abundances of zero, you will get a warning message that R removed x rows containing missing values. Yay! That warning means you're not putting a bubble if the organism isn't present. This is what we want. 
+
+Bar charts! You've already loaded your csv file up top, so you can run this. 
+
+```{r}
+bars = ggplot(pcm, aes(x = Sample, fill = variable, y = value)) 
++ 
+      geom_bar
+      (
+        stat = "identity", 
+        colour = "black" #hash out to remove bar chart outlines
+      ) 
++  
+    theme
+    (
+      axis.text.x = element_text
+      (
+        colour = "black", #Takes names ("darkgrey") or hex codes ("#5b5b5b")
+        size = 12, #Adjust font size
+        face = "bold",  #Options: "bold", "italic", "bold.italic" or "" for plain text
+        angle = 90, vjust = 0.5, hjust = 1 #use this for straight text labels
+        #angle=45, vjust=1 #use this for angled text labels
+      ), 
+      axis.title.y = element_text
+      (
+        size = 16, 
+        face = "bold"
+      ),
+      legend.title = element_text
+      (
+        size = 16, 
+        face = "bold"
+      ), #Y-axis text options
+      legend.text = element_text
+      (
+        size = 10, 
+        colour = "black", 
+        face="italic"
+      ), #Legend text options
+      axis.text.y = element_text
+      (
+        colour = "black", 
+        size = 12, 
+        face = "bold"
+      )
+    ) 
++ 
+  scale_y_continuous(expand = c(0,0), limits = c(0,100)) #remove the limits definition if you'd like the top of your chart set by data limits instead of to 100
++
+  scale_fill_manual(values = colours, guide = FALSE) 
++ 
+    labs
+    (
+      x = "", #additional labelling for x-axis
+      y = "Relative Abundance (%)", #y-axis label
+      fill = "ASV" #classification level used in your csv file
+    ) 
+
+bars
+bars
+
+```
+
+Save your graph!
+```{r}
+##ggsave("barchart.svg") #saves an SVG. Remove # to run. Note that this looks exact the same as the preview in the plot window - this is often squished and not fit for publication. 
+
+#For better (taller) saving options, click "Export" at the top of the plot window, then "save as image." Change the dimensions manually (I like these about square, but note that the preview tends to fail), select the file type, give it a name, and hit Save. PNG is a good format for saving space. SVG is the most scalable and best quality, but produces much larger files. 
+```
+
