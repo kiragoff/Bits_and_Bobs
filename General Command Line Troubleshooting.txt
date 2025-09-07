@@ -1,0 +1,118 @@
+General Linux Command Line Troubleshooting
+
+About the Genome Assembly Pipeline:
+	- The pipeline is not written as a single executable script, unlike the R script for 16S
+	- It goes stepwise through each component of the pipeline
+	- This is a memory-intensive process, especially at some steps
+	- I've tried to highlight where memory crashes tend to happen, but if anything ever causes a panic, throw in a thread flag to manage memory usage
+
+
+General Notes:
+	- gzip your large files! This saves a ton of space.
+		To gzip every file of a certain type in your current working directory (fastq in this case):
+			gzip *.fastq 
+		To gzip a specific file:
+			gzip [filename]
+		You'll know it worked when the command completes without errors and the filenames end with .gz
+		This step can take a few minutes, but it's well worth it.
+	- If you notice abnormal memory use (ie hanging where there are usually no problems, lag, using all the swap without the regular memory), check if the home drive or sdb drives are almost full
+	- Check memory usage or hard drive space via the system monitor (Show applications -> system monitor)
+	- Where I have used [] or '' or "" here, that indicates that the text should be replaced by the variable, including the marking punctuation
+	- Default text editors are not your friend! For Linux, Sublime is great. For Windows, notepad++. I'm looking for a good OSx alternative.
+	- Sublime appears to have releases for Windows and Macs, but I have not personally used them
+	- Try to avoid working in Word or rich text editors
+	- They insert all kinds of characters that are visually pleasing, but will prevent your code from running
+
+On AI:
+	- ChatGTP and other generative AIs are NOT actually artificial intelligences, they are language learning models
+	- They have a documented history of completely making things up and fabricating reference to back themselves up
+	- This is because they do not "understand" your question or the answer they provide you, they are making best guesses as to the next word in a text string
+	- They also consume massive amounts of energy and produce huge amounts of greenhouse gasses in order to lie to you
+	- If you are going to use them, be aware that you have to fact check every word of their output
+
+
+Navigating in the command line in Linux:
+	- You can open terminal by clicking the Terminal icon on the left-hand toolbar, then navigating to your directory of choice 
+	- OR open terminal in a folder/directory of your choice by clicking the three dots at the top of the folder window and then clicking 'Open in Terminal'
+	- You can also right click on a folder in a finder window, then select 'Open in terminal'
+	- Basic commands for orientation:
+		- 'ls' lists the files in your current directory
+		- 'cd [filepath]' changes your directory
+		- 'pwd' shows you where you are
+	- Avoid spaces in file or folder names - some programs can't parse them and will error out. 
+	- Use - or _ or . or capitalization to keep things legible
+		- Non-ideal file names: new reads.fastq, GROW_STRAINS_UofC_20240119_MP_fastq_pass.fasta
+		- Better possible names: newreads.fastq, NewReads.fastq, culture123_reads.fastq (where the reads are from hypothetical culture 123)
+	- Everything is case-senstive
+	- Anything behind # or ## is a comment, and will not be read as a command if entered into the command line
+	- To copy things from a terminal window: highlight the text to be copied with your mouse, then right click and copy
+	- To paste things into a terminal window: right click where the cursor flashes
+	- Keyboard shortcuts for copy and paste just insert weird characters
+	- To scroll through previous commands entered into a command window (to re-reun or modify them), just hit the up or down arrow
+
+
+Relative vs absolute paths:
+	- A relative path to a file or location is relative to where you are right now. Examples:
+		1. data/reads.fasta 
+			- This points at a folder INSIDE your current working directory called 'data' then at a file called reads.fasta
+		2. ../../basecalled/clean.fasta
+			This points two folders up, then into a folder named 'basecalled' then at a file named 'clean.fasta'
+	- An absolute file path points the application to the location of a file or directory, regardless of current location. Examples:
+		1. Databases are stored at /mnt/sdb/databases
+		2. Conda environments are at /home/lisa/miniconda3/envs
+	- To find an absolute file path to a folder
+		1. Open the folder you want to point to
+		2. Click on the three dots beside the folder name in the top bar
+		3. Click 'Open in Terminal'
+		4. Type 'pwd' in the terminal window and hit enter
+		5. The absolute file path will be displayed. Highlight it, then right click to copy.
+	- To find an absolute path to a file
+		1. Open the folder that contains your files
+		2. Click on the three dots beside the folder name in the top bar
+		3. Click 'Open in Terminal'
+		4. Type 'pwd' in the terminal window and hit enter
+		5. The absolute file path will be displayed. Highlight it, then right click to copy.
+		6. Right click to paste the file path where ever you want it, then add the file name after the final /
+	- Both kinds of file paths are case-sensitive.
+	- Linux absolute paths start with /, rather than the C:/ you might be used to from Windows 
+
+	
+
+Flags:
+	- Command line flags are text commands that alter the behaviour of a program
+		- they generally start with - or -- and are followed usually followed by a description
+		- for example, during Flye assembly: "flye --meta --threads 9" 
+			- "--meta" tells Flye to do the assembly in metagenome mode
+			- "--threads 9" tells it to use 9 of the computer's 16 threads to do the assembly
+			- flags and what they mean differ with each program, but "[program name] --help", or "[program name] -h" will usually get you an overview of the options available in that program
+			- If it's a program that has been placed in conda environment, you need to make sure the environment is active before using the help function
+	
+	***It is an extremely good idea to document everything you do when you're running a pipeline - especially if there's any trouble shooting
+	Notes on what didn't work and what you did to fix it are incredibly useful to future you and to others.
+
+
+
+Conda Environments:
+	- Sometimes, programs/applications/packages have dependencies that conflict with those needed by other programs/applications/packages. 
+	- To prevent them from fighting, you can put them in their own little boxes called conda environments. 
+	- Apps contained in conda environments can only be run within said environments
+	- General use:
+		- conda activate [environment name] ##activates conda environment
+		- [environment name] -h ##once in the conda environment, brings up help menu and command list for that environment
+		- conda deactivate ##closes the conda environment when you're done with it
+		- conda list ##lists names of available conda packages as well as the version of the package and its install source
+		- conda info --envs lists the conda environments that are available
+	- If you try to call an environment that doesn't exist, you will get an error
+	- Capitalization counts 
+		- 'conda activate bakta' will work
+		- 'conda activate Bakta' will not
+		- 'conda info --envs' to check the names of available environments
+	- Your current active conda environment is shown in brackets to the left of lisa@Bioinformatics
+	- For example, if your current active environment is Bakta, your command line will read: (bakta) lisa@bioinformatics:[path]$
+	- If no conda environment is active, it will read: lisa@bioinformatics:[path]$
+	- If you want to run t wo different versions of the same program, create two different conda environments with descriptive names and run them in there.
+
+
+
+
+Overview by Kira Goff, July 2024
