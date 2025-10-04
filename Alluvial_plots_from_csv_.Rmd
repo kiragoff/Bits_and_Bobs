@@ -1,0 +1,98 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Creates an alluvial plot (see https://jkzorz.github.io/2020/01/22/alluvial-plots.html).
+
+These are good for looking at how the relative composition of your sample changes with a variable, such as time, distance, or a concentration (salinity, biocide, etc). It stacks your data from largest to smallest at each point, and creates "rivers" flowing between them, which makes it easy to see how absolute and relative composition are changing. 
+
+How to set up your data table for this:
+Create a CSV file of the ASVs you want to track in wide format: Each sample has its own row, with columns for metadata and the relative abundance of associated ASVs. ASVs should be whole number relative abundances, rather than fractions. For example, 35% relative abundance would be entered as 35, not 0.35.
+
+Example:
+
+Sample    Time    ASV4  ASV7  ASV111
+Sample_1  Day 1   65.4  13.4  2.7
+Sample_2  Day 2   60.3  20.2  2.7
+Sample_3  Day 100 12.4  28.9  45.6
+
+The first column should be Sample, the next should be the variable you want to compare across (time, concentration, temperature, what have you), and your ASVs or taxa start in column 3. 
+
+Considerations:
+DADA2 produces tall data tables rather than wide ones. Within Excel/Libre Office, right click -> paste special -> transpose to change this. 
+
+Subset your data before you start. This type of chart will be a mess if you have a large number of ASVs/taxons. You can also collapse your ASVs at the genus level.
+
+Data will be displayed as it is in your CSV, with spaces and some special characters replaced with "." If you want speciation data associated with the ASVs in your table, change their name in your csv sheet. The legend replaces spaces and special characters with "." Easiest approach is to concatenate the ASV and the genus name in Excel or Libre office. I like to use [genus].[ASV] for display.
+
+Possible subsets: Top 10/20/30 ASVs or genera. Taxa from a specific set of organisms that you are interested in. Everything over 1/5/10% relative abundance.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(root.dir="/mnt/work-drive/yourname/yourfolder") #CHANGE THIS to your working directory
+```
+
+
+Installing packages is only necessary if R has been recently updated or hasn't been run for a while. If you need to install these packages, delete the # before "install.packages" and run the chunk of code. 
+
+```{r}
+#   Install ggplot2, ggalluvial, reshape2, and paletteer 
+#install.packages(c("ggplot2","ggalluvial", "reshape2","paletteer"), dependencies = TRUE)
+```
+
+Load packages.
+
+```{r}
+library(ggalluvial)
+library(ggplot2)
+library(reshape2)
+library(paletteer)
+
+```
+
+Completely clear the workspace so that no one else's objects are hanging around to mess with yours, and you don't accidentally re-graph from an old file.
+
+```{r}
+rm(list=ls(all=T))
+```
+
+Read in your csv file, formatted as above.
+```{r}
+
+bin=read.csv("/mnt/work-drive/yourname/yourfolder/yourdata.csv",header=TRUE) #Change this to the location of your csv file
+bmm2=melt(bin, id=c("Sample","Time")) #Change "Time" to the header of the second column of your csv file. 
+
+bmm2$Time <- factor (bmm2$Time,levels=unique(bmm2$Time)) #Change Time to the header of the second column of your CSV file. This keeps the X axis in the same order as on your excel sheet - eg, Day 1, Day 2, Day 100, to prevent R from alphabetizing to Day 1, Day 100, Day 2. 
+```
+
+Make your plot!
+
+```{r}
+
+ xx = ggplot(bmm2, aes( x = Time, y = value, alluvium = variable)) + #Change Time to the header of your second column
+	geom_alluvium(aes(fill = variable), colour = "black", alpha = 1, decreasing = FALSE) + 
+  
+    #scale_fill_paletteer_d("palettesForR::Pastels") +  #Remove the # before scale_fill_paletteer_d if you'd like to use this to select your own colour palette. Change "palettesForR::Pastels" to whatever palette you'd like, for example "LaCroixColoR::paired" or "Polychrome::alphabet". Otherwise the default colour palette works perfectly well.
+
+	labs(x = "", y = "Relative Abundance (%)", fill = "", colour = "") + #Titles for the X and Y axes. Change as needed. If not using a title, use ""
+	scale_y_continuous(expand = c(0,0), limits = c(0,100)) + #sets top of Y-scale to 100 
+	scale_x_discrete(expand = c(0.02,0.02)) + 
+	theme(legend.position = "top", axis.text.y = element_text(colour = "black", size = 12, face = "bold"), #Defines the position and appearance of the legend. Face options are "bold", "italic", and "bold.italic".
+	axis.text.x = element_text(colour = "black", face = "bold", angle =90, size = 12, vjust = 0.5), #Text options for the X-axis
+	axis.title.y = element_text(colour = "black", face = "bold", size = 14), #Text options for the Y-axis
+	panel.background = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size = 1.2), 
+	legend.text = element_text(size = 10, face = "bold")) #Text options for the legend 
+
+xx
+
+```
+
+```{r}
+##ggsave("alluvial.svg") #saves an SVG. Note that this looks exact the same as the preview in the plot window - this is often squished. For better (taller) saving options, click "Export" at the top of the plot window, then "save as image." Change the dimensions manually (I like these about square, but note that the preview tends to fail), select the file type, give it a name, and hit Save. PNG is a good format for saving space. SVG is the most scalable and best quality, but produces much larger files. 
+
+```
+
+OPTIONAL: Use Paletteer to pick one of ~2800 pre-defined colour palettes. Browsers at: https://emilhvitfeldt.github.io/r-color-palettes/ and https://r-graph-gallery.com/color-palette-finder. For alluvial charts, Paletteer requires discrete colour schemes, so make sure the one you pick has at least as many colours as you have variables. 
+
+To define your own colours, add <colours = c( "#A54657",  "#582630", "#F7EE7F")> with as many hex codes as you'd like, to a new line before xx=. Add <scale_fill_manual(values = colours, guide = "legend") + > to a new line between scale_fill_paletteer_d and labs. Do not add the <> themselves, just the text between the two symbols. Make sure scale_fill_paletteer_d is hashed out to be inactive so the two methods of colour selection don't fight.
